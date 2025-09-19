@@ -68,7 +68,7 @@ jobs:
 
 ### Required Permissions
 
-Your calling workflow needs to include:
+Your calling workflow needs to include these permissions:
 
 ```yaml
 permissions:
@@ -76,4 +76,29 @@ permissions:
   packages: write
 ```
 
-Or use `secrets: inherit` to pass all permissions from the calling workflow.
+**Complete example with permissions:**
+```yaml
+name: Build and Deploy Docker Image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker:
+    uses: Nexus-Group-Forge/nexus-common/.github/workflows/docker-publish.yml@main
+    with:
+      image-name: your-app-name
+    secrets: inherit
+```
+
+**Why these permissions are needed:**
+- `contents: read` - Required to checkout repository code
+- `packages: write` - Required to push Docker images to GitHub Container Registry (ghcr.io)
+
+**Alternative:** If your organization has restrictive default permissions, you may need to explicitly pass the GitHub token instead of using `secrets: inherit`.
