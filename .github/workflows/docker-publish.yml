@@ -1,0 +1,78 @@
+# Reusable Docker Build and Push Workflow
+#
+# This workflow can be called from other repositories to build and push Docker images.
+#
+# Usage example in your repository's workflow file:
+#
+# name: Build and Deploy
+# on:
+#   push:
+#     branches: [main]
+#   pull_request:
+#
+# jobs:
+#   docker:
+#     uses: Nexus-Group-Forge/nexus-common/.github/workflows/docker-publish.yml@main
+#     with:
+#       image-name: my-app-name
+#       dockerfile-path: Dockerfile
+#       build-context: .
+#     secrets: inherit
+#
+# Parameters:
+# - image-name: Required. The name of your Docker image
+# - dockerfile-path: Optional. Path to Dockerfile (default: "Dockerfile")
+# - build-context: Optional. Build context path (default: ".")
+
+name: Reusable Docker Build and Push
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: 'Name of the Docker image to build'
+        required: true
+        type: string
+      dockerfile-path:
+        description: 'Path to the Dockerfile (relative to repository root)'
+        required: false
+        type: string
+        default: 'Dockerfile'
+      build-context:
+        description: 'Build context path'
+        required: false
+        type: string
+        default: '.'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Build Image
+      run: docker build ${{ inputs.build-context }} --file ${{ inputs.dockerfile-path }} --tag ${{ inputs.image-name }} --label "runnumber=${GITHUB_RUN_ID}"
+
+    - name: Log in to registry
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+    - name: Push Image
+      run: |
+            IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}
+            IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+            echo IMAGE_ID=$IMAGE_ID
+            if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+              docker tag ${{ inputs.image-name }} $IMAGE_ID:latest
+              docker push $IMAGE_ID:latest
+              docker tag ${{ inputs.image-name }} $IMAGE_ID:${{ github.sha }}
+              docker push $IMAGE_ID:${{ github.sha }}
+            else
+              docker tag ${{ inputs.image-name }} $IMAGE_ID:dev-${{ github.sha }}
+              docker push $IMAGE_ID:dev-${{ github.sha }}
+            fi
