@@ -17,12 +17,14 @@
 #       image-name: my-app-name
 #       dockerfile-path: Dockerfile
 #       build-context: .
+#       build-args: "--build-arg NODE_ENV=production --build-arg VERSION=1.0.0"
 #     secrets: inherit
 #
 # Parameters:
 # - image-name: Required. The name of your Docker image
 # - dockerfile-path: Optional. Path to Dockerfile (default: "Dockerfile")
 # - build-context: Optional. Build context path (default: ".")
+# - build-args: Optional. Additional build arguments for Docker build (e.g., "--build-arg KEY=VALUE")
 
 name: Reusable Docker Build and Push
 
@@ -43,6 +45,11 @@ on:
         required: false
         type: string
         default: '.'
+      build-args:
+        description: 'Additional build arguments for Docker build'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   build-and-push:
@@ -57,7 +64,7 @@ jobs:
       uses: actions/checkout@v5
 
     - name: Build Image
-      run: docker build ${{ inputs.build-context }} --file ${{ inputs.dockerfile-path }} --tag ${{ inputs.image-name }} --label "runnumber=${GITHUB_RUN_ID}"
+      run: docker build ${{ inputs.build-context }} --file ${{ inputs.dockerfile-path }} ${{ inputs.build-args }} --tag ${{ inputs.image-name }} --label "runnumber=${GITHUB_RUN_ID}"
 
     - name: Log in to registry
       run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
